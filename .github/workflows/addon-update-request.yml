@@ -1,4 +1,5 @@
 name: Addon marketplace requests
+run-name: ${{ github.event.action }} #${{ github.event.issue.number }} - ${{ github.event.issue.title }}
 
 on:
   issues:
@@ -75,6 +76,16 @@ jobs:
               trusted: (policy.trustedUsers || []).includes(user),
             });
 
+            const desiredTitle = result.addon?.name ? `Update addon: ${result.addon.name}` : (result.payload.addonId ? `Update addon: ${result.payload.addonId}` : 'Update addon');
+            if (issue.title !== desiredTitle) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                title: desiredTitle,
+              });
+            }
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -134,6 +145,16 @@ jobs:
               user,
               banned: (policy.bannedUsers || []).includes(user),
             });
+
+            const desiredTitle = result.payload.name ? `Add addon: ${result.payload.name}` : 'Add addon';
+            if (issue.title !== desiredTitle) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                title: desiredTitle,
+              });
+            }
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,

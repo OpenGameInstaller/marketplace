@@ -1,4 +1,5 @@
 name: Addon comment commands
+run-name: ${{ github.event.comment.body }} on #${{ github.event.issue.number }}
 
 on:
   issue_comment:
@@ -246,6 +247,7 @@ jobs:
           path: _site
 
       - name: Deploy GitHub Pages
+        id: deployment
         if: steps.command.outputs.apply == 'true'
         uses: actions/deploy-pages@v4
 
@@ -278,11 +280,13 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const pageUrl = '${{ steps.deployment.outputs.page_url }}';
+            const deploymentNote = pageUrl ? `\n\nMarketplace Pages deploy: ${pageUrl}api/marketplace.json` : '';
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.issue.number,
-              body: `${{ steps.command.outputs.message }}`,
+              body: `${{ steps.command.outputs.message }}${deploymentNote}`,
             });
             if ('${{ steps.command.outputs.close }}' === 'true') {
               await github.rest.issues.update({

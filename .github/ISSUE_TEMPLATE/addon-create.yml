@@ -1,6 +1,6 @@
 name: Addon submission
 description: Submit a new OpenGameInstaller marketplace addon
-title: "Add addon: <addon name>"
+title: "Add addon"
 labels:
   - addon-create
 body:

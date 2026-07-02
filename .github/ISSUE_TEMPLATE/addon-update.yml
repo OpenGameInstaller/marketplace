@@ -1,6 +1,6 @@
 name: Addon update request
 description: Request an update to an existing OpenGameInstaller marketplace addon
-title: "Update addon: <addon id>"
+title: "Update addon"
 labels:
   - addon-update
 body:
