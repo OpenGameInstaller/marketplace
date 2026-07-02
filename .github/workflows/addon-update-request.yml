@@ -15,8 +15,13 @@ jobs:
   reject-banned-addon-request:
     if: >-
       github.event_name == 'issues' &&
-      !contains(github.event.issue.labels.*.name, 'addon-update') &&
-      (contains(github.event.issue.labels.*.name, 'addon-create') || contains(github.event.issue.labels.*.name, 'addon-creation'))
+      (
+        contains(github.event.issue.labels.*.name, 'addon-create') ||
+        contains(github.event.issue.labels.*.name, 'addon-creation') ||
+        contains(github.event.issue.labels.*.name, 'addon-update') ||
+        contains(github.event.issue.body, '### Addon name') ||
+        contains(github.event.issue.body, '### Addon ID')
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +51,10 @@ jobs:
   validate-request:
     if: >-
       github.event_name == 'issues' &&
-      contains(github.event.issue.labels.*.name, 'addon-update')
+      (
+        contains(github.event.issue.labels.*.name, 'addon-update') ||
+        contains(github.event.issue.body, '### Addon ID')
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -105,7 +113,10 @@ jobs:
   validate-create-request:
     if: >-
       github.event_name == 'issues' &&
-      contains(github.event.issue.labels.*.name, 'addon-create')
+      (
+        contains(github.event.issue.labels.*.name, 'addon-create') ||
+        contains(github.event.issue.body, '### Addon name')
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
