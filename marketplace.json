@@ -16,5 +16,21 @@
     },
     "updatedAt": "2026-07-02T07:57:53.191Z",
     "updateNotes": "Adds online checks to improve perf"
+  },
+  {
+    "name": "Steamrip Scraper",
+    "author": "Fat-Addons",
+    "source": "https://gitlab.com/fat-addons/steamrip-addon",
+    "img": "https://gitlab.com/fat-addons/steamrip-addon/-/raw/main/favicon.png",
+    "pinnedCommit": "0f8a962ef9c1c25499cbe0dd1f1f1661443e0b89",
+    "description": "adds support for steamrip.com",
+    "submittedBy": {
+      "id": "66748576",
+      "login": "Nat3z"
+    },
+    "discussion": {
+      "id": "D_kwDOTLPT2c4Angnm",
+      "url": "https://github.com/OpenGameInstaller/marketplace-actions/discussions/7"
+    }
   }
 ]
