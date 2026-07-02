@@ -4,7 +4,7 @@
     "author": "OGI Team",
     "source": "https://github.com/Nat3z/steam-integration",
     "img": "https://github.com/Nat3z/steam-integration/blob/main/icon.png?raw=true",
-    "pinnedCommit": "733b998b5610c3d65fd623e4c9d5b242647d4c1e",
+    "pinnedCommit": "fad7fff59f922ba214602e362a8bf3c6818fa5ea",
     "description": "Adds support for metadata and searching for Steam",
     "submittedBy": {
       "id": "66748576",
@@ -13,6 +13,8 @@
     "discussion": {
       "id": "D_kwDOTLPT2c4AngmW",
       "url": "https://github.com/OpenGameInstaller/marketplace-actions/discussions/4"
-    }
+    },
+    "updatedAt": "2026-07-02T07:57:53.191Z",
+    "updateNotes": "Adds online checks to improve perf"
   }
 ]
