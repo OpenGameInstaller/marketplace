@@ -1,0 +1,54 @@
+name: Addon update request
+description: Request an update to an existing OpenGameInstaller marketplace addon
+title: "Update addon: <addon name>"
+labels:
+  - addon-update
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to request that an existing marketplace addon points to a new commit, tag, or version.
+
+  - type: input
+    id: addon_name
+    attributes:
+      label: Addon name
+      description: The marketplace addon name to update.
+      placeholder: My Addon
+    validations:
+      required: true
+
+  - type: input
+    id: repository_url
+    attributes:
+      label: Repository URL
+      description: The addon GitHub/Git repository URL already used by the marketplace entry.
+      placeholder: https://github.com/example/my-addon
+    validations:
+      required: true
+
+  - type: input
+    id: target_ref
+    attributes:
+      label: Target commit, tag, or branch
+      description: Prefer a full commit SHA for reproducible marketplace updates.
+      placeholder: fad7fff59f922ba214602e362a8bf3c6818fa5ea
+    validations:
+      required: true
+
+  - type: textarea
+    id: update_notes
+    attributes:
+      label: Update notes
+      description: What changed in this addon update?
+      placeholder: Fixes setup script and updates metadata.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I confirm this update is for the repository above and is ready for maintainer review.
+          required: true

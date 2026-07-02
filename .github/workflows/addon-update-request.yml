@@ -1,0 +1,210 @@
+name: Addon update requests
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  validate-request:
+    if: >-
+      github.event_name == 'issues' &&
+      contains(github.event.issue.labels.*.name, 'addon-update')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate request and comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            function parseIssueForm(body) {
+              const fields = {};
+              const regex = /###\s+(.+?)\s*\n+([\s\S]*?)(?=\n###\s+|$)/g;
+              for (const match of body.matchAll(regex)) {
+                const key = match[1].trim().toLowerCase();
+                const value = match[2]
+                  .replace(/<!--[\s\S]*?-->/g, '')
+                  .trim();
+                fields[key] = value;
+              }
+              return fields;
+            }
+
+            function normalizeUrl(url) {
+              return String(url || '')
+                .trim()
+                .replace(/\.git$/, '')
+                .replace(/\/$/, '')
+                .toLowerCase();
+            }
+
+            const issue = context.payload.issue;
+            const fields = parseIssueForm(issue.body || '');
+            const addonName = fields['addon name'];
+            const repoUrl = fields['repository url'];
+            const targetRef = fields['target commit, tag, or branch'];
+            const notes = fields['update notes'];
+            const errors = [];
+
+            if (!addonName) errors.push('Missing addon name.');
+            if (!repoUrl) errors.push('Missing repository URL.');
+            if (!targetRef) errors.push('Missing target commit, tag, or branch.');
+            if (!notes) errors.push('Missing update notes.');
+
+            let addon;
+            try {
+              const marketplace = JSON.parse(fs.readFileSync('marketplace.json', 'utf8'));
+              addon = (marketplace.addons || []).find((entry) => {
+                return entry.name === addonName || normalizeUrl(entry.git || entry.repositoryUrl || entry.url) === normalizeUrl(repoUrl);
+              });
+              if (!addon) errors.push('No matching addon was found in marketplace.json.');
+              if (addon && repoUrl && normalizeUrl(addon.git || addon.repositoryUrl || addon.url) !== normalizeUrl(repoUrl)) {
+                errors.push('Repository URL does not match the marketplace entry.');
+              }
+            } catch (error) {
+              errors.push(`Could not read marketplace.json: ${error.message}`);
+            }
+
+            const summary = [
+              '## Addon update request validation',
+              '',
+              `**Addon:** ${addonName || '_missing_'}`,
+              `**Repository:** ${repoUrl || '_missing_'}`,
+              `**Requested target:** ${targetRef || '_missing_'}`,
+              addon ? `**Current pinned commit/ref:** ${addon.pinnedCommit || addon.targetRef || '_unset_'}` : '',
+              '',
+              errors.length ? `❌ **Validation failed**\n\n${errors.map((error) => `- ${error}`).join('\n')}` : '✅ **Validation passed**',
+              '',
+              errors.length ? 'Edit the issue to fix the problems above.' : 'A maintainer with write access can approve this update by commenting `/approve`.',
+            ].filter(Boolean).join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: summary,
+            });
+
+  approve-request:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request == null &&
+      contains(github.event.issue.labels.*.name, 'addon-update') &&
+      startsWith(github.event.comment.body, '/approve')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check approver permission
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.payload.comment.user.login,
+            });
+            const allowed = ['admin', 'maintain', 'write'];
+            if (!allowed.includes(data.permission)) {
+              core.setFailed(`@${context.payload.comment.user.login} has ${data.permission} permission; write access is required.`);
+            }
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Parse issue form
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          script: |
+            function parseIssueForm(body) {
+              const fields = {};
+              const regex = /###\s+(.+?)\s*\n+([\s\S]*?)(?=\n###\s+|$)/g;
+              for (const match of body.matchAll(regex)) {
+                fields[match[1].trim().toLowerCase()] = match[2]
+                  .replace(/<!--[\s\S]*?-->/g, '')
+                  .trim();
+              }
+              return fields;
+            }
+            const fields = parseIssueForm(context.payload.issue.body || '');
+            const payload = {
+              addonName: fields['addon name'],
+              repoUrl: fields['repository url'],
+              targetRef: fields['target commit, tag, or branch'],
+              notes: fields['update notes'],
+            };
+            for (const [key, value] of Object.entries(payload)) {
+              if (!value) core.setFailed(`Missing required field: ${key}`);
+            }
+            core.setOutput('payload', JSON.stringify(payload));
+
+      - name: Update marketplace file
+        env:
+          UPDATE_PAYLOAD: ${{ steps.parse.outputs.payload }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const payload = JSON.parse(process.env.UPDATE_PAYLOAD);
+
+          function normalizeUrl(url) {
+            return String(url || '')
+              .trim()
+              .replace(/\.git$/, '')
+              .replace(/\/$/, '')
+              .toLowerCase();
+          }
+
+          const path = 'marketplace.json';
+          const marketplace = JSON.parse(fs.readFileSync(path, 'utf8'));
+          marketplace.addons ||= [];
+          const addon = marketplace.addons.find((entry) => {
+            return entry.name === payload.addonName || normalizeUrl(entry.git || entry.repositoryUrl || entry.url) === normalizeUrl(payload.repoUrl);
+          });
+
+          if (!addon) {
+            throw new Error(`No matching addon found for ${payload.addonName}`);
+          }
+
+          if (normalizeUrl(addon.git || addon.repositoryUrl || addon.url) !== normalizeUrl(payload.repoUrl)) {
+            throw new Error('Repository URL does not match the marketplace entry.');
+          }
+
+          addon.pinnedCommit = payload.targetRef;
+          addon.updatedAt = new Date().toISOString();
+          addon.updateNotes = payload.notes;
+
+          fs.writeFileSync(path, `${JSON.stringify(marketplace, null, 2)}\n`);
+          NODE
+
+      - name: Commit marketplace update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add marketplace.json
+          git commit -m "chore(addons): approve update from issue #${{ github.event.issue.number }}"
+          git push
+
+      - name: Comment and close issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: '✅ Approved and applied. The marketplace file was updated, and deployment should start from the pushed commit.',
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              state: 'closed',
+            });
