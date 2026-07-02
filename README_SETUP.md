@@ -2,6 +2,8 @@
 
 This repository is a GitHub Actions template for building and operating your own OpenGameInstaller addon marketplace. Fork it, enable the included workflows, and GitHub Actions will validate addon requests, update marketplace data, and publish a static marketplace API with GitHub Pages.
 
+Fork this repository instead of copying files manually so your marketplace can pull the latest workflow/action updates from upstream over time.
+
 Use this guide to set up your fork as an independent marketplace.
 
 ## 1. Fork the template repository
