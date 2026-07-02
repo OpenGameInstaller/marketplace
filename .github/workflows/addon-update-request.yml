@@ -1,4 +1,4 @@
-name: Addon update requests
+name: Addon marketplace requests
 
 on:
   issues:
@@ -54,7 +54,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const { validate } = require('./scripts/addon-update-request.cjs');
+            const { validate } = require('./scripts/addon-request.cjs');
             const fs = require('fs');
             const issue = context.payload.issue;
             const policy = JSON.parse(fs.readFileSync('.github/addon-request-policy.json', 'utf8'));
@@ -63,6 +63,45 @@ jobs:
               user,
               banned: (policy.bannedUsers || []).includes(user),
               trusted: (policy.trustedUsers || []).includes(user),
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: result.summary,
+            });
+
+            if ((policy.bannedUsers || []).includes(user)) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'not_planned',
+              });
+            }
+
+  validate-create-request:
+    if: >-
+      github.event_name == 'issues' &&
+      contains(github.event.issue.labels.*.name, 'addon-create')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate submission and comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { validateCreate } = require('./scripts/addon-request.cjs');
+            const fs = require('fs');
+            const issue = context.payload.issue;
+            const policy = JSON.parse(fs.readFileSync('.github/addon-request-policy.json', 'utf8'));
+            const user = issue.user.login;
+            const result = validateCreate(issue.body || '', {
+              user,
+              banned: (policy.bannedUsers || []).includes(user),
             });
 
             await github.rest.issues.createComment({
@@ -153,7 +192,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const { validate } = require('./scripts/addon-update-request.cjs');
+            const { validate } = require('./scripts/addon-request.cjs');
             const command = '${{ steps.policy.outputs.command }}';
             const user = '${{ steps.policy.outputs.user }}';
             const isAddonUpdate = context.payload.issue.labels.some((label) => label.name === 'addon-update');
@@ -165,7 +204,8 @@ jobs:
         if: steps.trusted_current.outputs.apply == 'true'
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
-        run: node scripts/addon-update-request.cjs apply
+          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
+        run: node scripts/addon-request.cjs apply-by-label
 
       - name: Commit current trusted update
         if: steps.trusted_current.outputs.apply == 'true'
@@ -209,7 +249,7 @@ jobs:
     if: >-
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request == null &&
-      contains(github.event.issue.labels.*.name, 'addon-update') &&
+      (contains(github.event.issue.labels.*.name, 'addon-update') || contains(github.event.issue.labels.*.name, 'addon-create')) &&
       startsWith(github.event.comment.body, '/bump')
     runs-on: ubuntu-latest
     steps:
@@ -238,7 +278,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const { replaceTargetRef } = require('./scripts/addon-update-request.cjs');
+            const { replaceTargetRef } = require('./scripts/addon-request.cjs');
             const requested = context.payload.comment.body.trim().replace(/^\/bump\s*/i, '').trim();
             const body = replaceTargetRef(context.payload.issue.body || '', requested);
             await github.rest.issues.update({
@@ -270,7 +310,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const { validate } = require('./scripts/addon-update-request.cjs');
+            const { validate } = require('./scripts/addon-request.cjs');
             const policy = JSON.parse(fs.readFileSync('.github/addon-request-policy.json', 'utf8'));
             const user = context.payload.issue.user.login;
             const trusted = (policy.trustedUsers || []).includes(user);
@@ -282,7 +322,8 @@ jobs:
         if: steps.check.outputs.apply == 'true'
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
-        run: node scripts/addon-update-request.cjs apply
+          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
+        run: node scripts/addon-request.cjs apply-by-label
 
       - name: Commit trusted marketplace update
         if: steps.check.outputs.apply == 'true'
@@ -317,7 +358,7 @@ jobs:
     if: >-
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request == null &&
-      contains(github.event.issue.labels.*.name, 'addon-update') &&
+      (contains(github.event.issue.labels.*.name, 'addon-update') || contains(github.event.issue.labels.*.name, 'addon-create')) &&
       startsWith(github.event.comment.body, '/approve')
     runs-on: ubuntu-latest
     steps:
@@ -353,7 +394,8 @@ jobs:
       - name: Update marketplace file
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
-        run: node scripts/addon-update-request.cjs apply
+          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
+        run: node scripts/addon-request.cjs apply-by-label
 
       - name: Commit marketplace update
         run: |
@@ -362,7 +404,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add marketplace.json api/marketplace.json .github/ISSUE_TEMPLATE/addon-update.yml
-          git commit -m "chore(addons): approve update from issue #${{ github.event.issue.number }}"
+          git commit -m "chore(addons): approve marketplace request from issue #${{ github.event.issue.number }}"
           git push
 
       - name: Comment and close issue

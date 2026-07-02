@@ -1,0 +1,79 @@
+name: Addon submission
+description: Submit a new OpenGameInstaller marketplace addon
+title: "Add addon: <addon name>"
+labels:
+  - addon-create
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to submit a new community addon to the OpenGameInstaller marketplace.
+
+  - type: input
+    id: addon_name
+    attributes:
+      label: Addon name
+      description: The display name for the addon.
+      placeholder: My Addon
+    validations:
+      required: true
+
+  - type: input
+    id: author
+    attributes:
+      label: Author
+      description: The addon author or organization.
+      placeholder: octocat
+    validations:
+      required: true
+
+  - type: input
+    id: repository_url
+    attributes:
+      label: Repository URL
+      description: Public Git repository URL for the addon.
+      placeholder: https://github.com/example/my-addon
+    validations:
+      required: true
+
+  - type: input
+    id: image_url
+    attributes:
+      label: Image URL
+      description: Public icon/preview image URL for the marketplace listing.
+      placeholder: https://github.com/example/my-addon/raw/main/icon.png
+    validations:
+      required: true
+
+  - type: input
+    id: target_ref
+    attributes:
+      label: Target commit, tag, or branch (optional; defaults to latest tag)
+      description: Prefer a full commit SHA for reproducible marketplace entries. Leave blank to use the latest created tag.
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Brief marketplace description for the addon.
+      placeholder: Adds support for searching and installing games from Example Store.
+    validations:
+      required: true
+
+  - type: textarea
+    id: submission_notes
+    attributes:
+      label: Submission notes
+      description: Anything maintainers should know while reviewing this addon?
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I confirm I own or maintain this addon and it is ready for maintainer review.
+          required: true
