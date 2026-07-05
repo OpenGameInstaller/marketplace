@@ -7,7 +7,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this form to submit a new community addon to the OpenGameInstaller marketplace.
+        Use this form to submit a new community addon to the OpenGameInstaller marketplace. After opening the issue, you can update details by commenting `/set-name`, `/set-author`, `/set-description`, `/set-repository`, `/set-image`, or `/bump`.
 
   - type: input
     id: addon_name
@@ -49,7 +49,7 @@ body:
     id: target_ref
     attributes:
       label: Target commit, tag, or branch (optional; defaults to latest tag)
-      description: Prefer a full commit SHA for reproducible marketplace entries. Leave blank to use the latest created tag.
+      description: Leave blank to use the latest created tag, or enter a commit, tag, or branch.
     validations:
       required: false
 

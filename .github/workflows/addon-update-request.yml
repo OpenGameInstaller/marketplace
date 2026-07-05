@@ -39,7 +39,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.issue.number,
-              body: `🚫 @${user} is banned from addon creation/update requests in this repository.`,
+              body: `@${user} can no longer open addon creation or update requests in this repository.`,
             });
             await github.rest.issues.update({
               owner: context.repo.owner,
@@ -95,11 +95,10 @@ jobs:
 
             if (context.payload.action === 'opened' && result.addon?.discussion?.id) {
               const discussionBody = [
-                `📬 Update requested by @${user} in #${issue.number}.`,
+                `Update requested by @${user} in #${issue.number}.`,
                 '',
-                `**Requested target:** ${result.payload.targetRef || 'latest created tag on approval'}`,
-                `**Validation:** ${result.errors.length ? 'failed' : 'passed'}`,
-                result.errors.length ? `**Errors:**\n${result.errors.map((error) => `- ${error}`).join('\n')}` : '',
+                `**Requested target:** ${result.payload.targetRef || 'newest tag on approval'}`,
+                result.errors.length ? `**Needs changes before review:**\n${result.errors.map((error) => `- ${error}`).join('\n')}` : '**Ready for review**',
               ].filter(Boolean).join('\n');
 
               await github.graphql(`
@@ -295,10 +294,10 @@ jobs:
               repo: context.repo.repo,
               issue_number: context.payload.issue.number,
               body: command === 'ban'
-                ? `🚫 @${user} is now banned from addon creation/update requests in this repository.`
+                ? `@${user} can no longer open addon creation or update requests in this repository.`
                 : (applied
-                  ? `✅ @${user} is now trusted, and this addon update was automatically approved and applied.`
-                  : `✅ @${user} is now trusted; their addon update requests will be approved automatically.`),
+                  ? `@${user} is now trusted, and this addon update was approved and applied.`
+                  : `@${user} is now trusted. Their valid addon update requests can be applied automatically.`),
             });
             if (command === 'ban' || applied) {
               await github.rest.issues.update({
@@ -356,7 +355,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.issue.number,
-              body: `🔁 Requested target ref bumped to \`${requested}\`.`,
+              body: `Thanks, I updated the requested target to \`${requested}\`.`,
             });
 
   auto-approve-trusted-request:
@@ -421,7 +420,7 @@ jobs:
         with:
           script: |
             const body = [
-              '✅ Addon update automatically approved for trusted requester.',
+              'Addon update approved for trusted requester.',
               '',
               `Issue: #${context.payload.issue.number}`,
             ].join('\n');
@@ -443,7 +442,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.issue.number,
-              body: '✅ Trusted requester update was automatically approved and applied.',
+              body: 'Trusted requester update was approved and applied.',
             });
             await github.rest.issues.update({
               owner: context.repo.owner,
@@ -523,7 +522,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.issue.number,
-              body: '✅ Approved and applied. The marketplace file was updated, and deployment should start from the pushed commit.',
+              body: 'Approved and applied. The marketplace file was updated, and deployment should start soon.',
             });
             await github.rest.issues.update({
               owner: context.repo.owner,

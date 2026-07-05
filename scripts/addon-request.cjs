@@ -58,12 +58,21 @@ function getTargetRef(fields) {
   return getFieldByPrefix(fields, 'target commit, tag, or branch');
 }
 
+function getDescription(fields) {
+  return fields.description || getFieldByPrefix(fields, 'new description');
+}
+
 function parseUpdatePayload(body) {
   const fields = parseIssueForm(body);
   return {
     addonId: fields['addon id'],
     targetRef: getTargetRef(fields),
     notes: fields['update notes'],
+    name: getFieldByPrefix(fields, 'new addon name'),
+    author: getFieldByPrefix(fields, 'new author'),
+    source: getFieldByPrefix(fields, 'new repository url'),
+    img: getFieldByPrefix(fields, 'new image url'),
+    description: getDescription(fields),
   };
 }
 
@@ -126,6 +135,8 @@ function validateUpdate(body, options = {}) {
 
   if (!payload.addonId || payload.addonId === 'no-addons-available') errors.push('Missing addon ID.');
   if (!payload.notes) errors.push('Missing update notes.');
+  if (payload.source) validateUrl(payload.source, 'Repository URL', errors);
+  if (payload.img) validateUrl(payload.img, 'Image URL', errors);
   if (options.banned) errors.push(`@${options.user || 'this user'} is banned from addon requests.`);
 
   let addon;
@@ -141,26 +152,31 @@ function validateUpdate(body, options = {}) {
 
   const repoUrl = addon && addonSource(addon);
   const summary = [
-    '## Addon update request validation',
+    '## Addon update request',
     '',
     `**Addon ID:** ${payload.addonId || '_missing_'}`,
     addon ? `**Addon:** ${addon.name || '_unnamed_'}` : '',
-    `**Repository:** ${repoUrl || '_inferred after addon match_'}`,
-    `**Requested target:** ${payload.targetRef || '_latest created tag will be resolved on approval_'}`,
+    `**Repository:** ${repoUrl || '_found after the addon is matched_'}`,
+    `**Requested target:** ${payload.targetRef || '_newest tag on approval_'}`,
     addon ? `**Current pinned commit/ref:** ${addon.pinnedCommit || '_unset_'}` : '',
     addon?.submittedBy?.login ? `**Original submitter:** @${addon.submittedBy.login}` : '',
+    payload.name ? `**New name:** ${payload.name}` : '',
+    payload.author ? `**New author:** ${payload.author}` : '',
+    payload.source ? `**New repository:** ${payload.source}` : '',
+    payload.img ? `**New image:** ${payload.img}` : '',
+    payload.description ? `**New description:** ${payload.description}` : '',
     options.trusted ? `**Requester trust:** @${options.user} is trusted; this request can be auto-approved.` : '',
     '',
-    errors.length ? `❌ **Validation failed**\n\n${errors.map((error) => `- ${error}`).join('\n')}` : '✅ **Validation passed**',
+    errors.length ? `**Needs changes before review**\n\n${errors.map((error) => `- ${error}`).join('\n')}` : '**Ready for review**',
     '',
-    '### How this update process works',
+    '### What happens next',
     '',
-    '- If the target ref is blank, approval resolves it to the newest created Git tag commit from the addon repository.',
-    '- Maintainers can approve the update by commenting `/approve`.',
-    '- The issue creator can change the requested ref before approval with `/bump <commit|tag|branch>`.',
-    '- When approved, the workflow updates `marketplace.json`, refreshes the generated Pages API file, commits the change, and closes this issue.',
+    '- If no target is listed, I will use the newest tag from the addon repository when this is approved.',
+    '- A maintainer can approve this with `/approve`.',
+    '- The issue creator or addon owner can still update details here with `/bump`, `/set-name`, `/set-author`, `/set-description`, `/set-repository`, or `/set-image`.',
+    '- After approval, the marketplace listing is updated and this issue is closed.',
     '',
-    errors.length ? 'Edit the issue to fix the problems above.' : (options.trusted ? 'Trusted requester: this update will be applied automatically.' : 'A maintainer with write access can approve this update by commenting `/approve`.'),
+    errors.length ? 'Please update the issue with the missing or incorrect details above.' : (options.trusted ? 'This trusted update is ready to be applied automatically.' : 'This request is ready for a maintainer to review.'),
   ].filter(Boolean).join('\n');
 
   return { payload, addon, errors, summary };
@@ -189,27 +205,25 @@ function validateCreate(body, options = {}) {
   }
 
   const summary = [
-    '## Addon submission validation',
+    '## Addon submission',
     '',
     `**Addon:** ${payload.name || '_missing_'}`,
     `**Author:** ${payload.author || '_missing_'}`,
     `**Repository:** ${payload.source || '_missing_'}`,
     `**Image:** ${payload.img || '_missing_'}`,
-    `**Requested target:** ${payload.targetRef || '_latest created tag will be resolved on approval_'}`,
+    `**Requested target:** ${payload.targetRef || '_newest tag on approval_'}`,
     '',
-    errors.length ? `❌ **Validation failed**\n\n${errors.map((error) => `- ${error}`).join('\n')}` : '✅ **Validation passed**',
+    errors.length ? `**Needs changes before review**\n\n${errors.map((error) => `- ${error}`).join('\n')}` : '**Ready for review**',
     '',
-    '### How this submission process works',
+    '### What happens next',
     '',
-    '- Maintainers review the addon metadata, repository, icon, and description.',
-    '- If the target ref is blank, approval resolves it to the newest created Git tag commit from the addon repository.',
-    '- Maintainers can add the addon by commenting `/approve`.',
-    '- The issue creator can change the requested ref before approval with `/bump <commit|tag|branch>`.',
-    '- When approved, the workflow creates a GitHub Discussion for the addon and records the submitter GitHub user ID.',
-    '- Future update requests for this addon must be opened by the original submitter.',
-    '- The workflow adds the addon to `marketplace.json`, refreshes the generated Pages API file, commits the change, and closes this issue.',
+    '- A maintainer will review the listing details, repository, image, and description.',
+    '- If no target is listed, I will use the newest tag from the addon repository when this is approved.',
+    '- A maintainer can add this with `/approve`.',
+    '- The issue creator can still update details here with `/bump`, `/set-name`, `/set-author`, `/set-description`, `/set-repository`, or `/set-image`.',
+    '- After approval, the addon is added to the marketplace and this issue is closed.',
     '',
-    errors.length ? 'Edit the issue to fix the problems above.' : 'A maintainer with write access can add this addon by commenting `/approve`.',
+    errors.length ? 'Please update the issue with the missing or incorrect details above.' : 'This submission is ready for a maintainer to review.',
   ].filter(Boolean).join('\n');
 
   return { payload, duplicate, errors, summary };
@@ -219,6 +233,10 @@ function applyUpdate(body, options = {}) {
   const payload = parseUpdatePayload(body);
   if (!payload.addonId || payload.addonId === 'no-addons-available') throw new Error('Missing required field: addonId');
   if (!payload.notes) throw new Error('Missing required field: notes');
+  const metadataErrors = [];
+  if (payload.source) validateUrl(payload.source, 'Repository URL', metadataErrors);
+  if (payload.img) validateUrl(payload.img, 'Image URL', metadataErrors);
+  if (metadataErrors.length) throw new Error(metadataErrors.join('\n'));
 
   const { marketplace: addons } = readMarketplace();
   const addon = addons.find((entry) => inferAddonId(entry) === payload.addonId);
@@ -228,12 +246,17 @@ function applyUpdate(body, options = {}) {
     throw new Error('Only the original addon submitter can update this addon.');
   }
 
-  const source = addonSource(addon);
+  const source = payload.source || addonSource(addon);
   if (!source) throw new Error('Marketplace entry is missing a source field.');
 
   addon.pinnedCommit = resolveTargetRef(source, payload.targetRef);
   addon.updatedAt = new Date().toISOString();
   addon.updateNotes = payload.notes;
+  if (payload.name) addon.name = payload.name;
+  if (payload.author) addon.author = payload.author;
+  if (payload.source) addon.source = payload.source;
+  if (payload.img) addon.img = payload.img;
+  if (payload.description) addon.description = payload.description;
 
   fs.writeFileSync('marketplace.json', `${JSON.stringify(addons, null, 2)}\n`);
   return { payload, pinnedCommit: addon.pinnedCommit };
@@ -296,9 +319,88 @@ function applyByLabel(body, labels = [], options = {}) {
 
 function replaceTargetRef(body, targetRef) {
   if (!targetRef) throw new Error('Usage: /bump <commit, tag, or branch>');
-  const pattern = /(###\s+Target commit, tag, or branch[^\n]*\n+)([\s\S]*?)(?=\n###\s+|$)/i;
-  if (!pattern.test(body)) throw new Error('Could not find the target ref field in the issue body.');
-  return body.replace(pattern, (_, heading) => `${heading}${targetRef}\n`);
+  return replaceIssueField(body, 'target', targetRef);
+}
+
+const EDITABLE_FIELDS = {
+  name: {
+    heading: 'Addon name',
+    updateHeading: 'New addon name',
+    aliases: ['addon-name', 'addon name', 'name'],
+    usage: '/set-name <new addon name>',
+  },
+  author: {
+    heading: 'Author',
+    updateHeading: 'New author',
+    aliases: ['author'],
+    usage: '/set-author <new author>',
+  },
+  description: {
+    heading: 'Description',
+    updateHeading: 'New description',
+    aliases: ['description', 'desc'],
+    usage: '/set-description <new description>',
+  },
+  repository: {
+    heading: 'Repository URL',
+    updateHeading: 'New repository URL',
+    aliases: ['repository', 'repository-url', 'repo', 'source'],
+    usage: '/set-repository <new repository URL>',
+  },
+  image: {
+    heading: 'Image URL',
+    updateHeading: 'New image URL',
+    aliases: ['image', 'image-url', 'img'],
+    usage: '/set-image <new image URL>',
+  },
+  target: {
+    heading: 'Target commit, tag, or branch',
+    aliases: ['target', 'target-ref', 'bump'],
+    usage: '/bump <commit, tag, or branch>',
+  },
+};
+
+function editableFieldForAlias(alias) {
+  const normalized = String(alias || '').trim().toLowerCase();
+  return Object.entries(EDITABLE_FIELDS).find(([, field]) => field.aliases.includes(normalized));
+}
+
+function fieldPattern(heading) {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(###\\s+${escaped}[^\\n]*\\n+)([\\s\\S]*?)(?=\\n###\\s+|$)`, 'i');
+}
+
+function insertIssueField(body, heading, value) {
+  const text = String(body || '').trimEnd();
+  const block = `### ${heading}\n\n${value}\n`;
+  const insertionPoint = text.search(/\n###\s+(Update notes|Submission notes|Confirmation)\b/i);
+  if (insertionPoint === -1) return `${text}\n\n${block}`;
+  return `${text.slice(0, insertionPoint)}\n\n${block}${text.slice(insertionPoint)}`;
+}
+
+function replaceIssueField(body, fieldAlias, value) {
+  if (!String(value || '').trim()) {
+    const [, field] = editableFieldForAlias(fieldAlias) || [];
+    throw new Error(`Usage: ${field?.usage || '/set-field <value>'}`);
+  }
+
+  const entry = editableFieldForAlias(fieldAlias);
+  if (!entry) throw new Error(`Unknown editable field: ${fieldAlias}`);
+
+  const [, field] = entry;
+  const nextValue = String(value).trim();
+  const existingPattern = fieldPattern(field.heading);
+  if (existingPattern.test(body)) {
+    return body.replace(existingPattern, (_, heading) => `${heading}${nextValue}\n`);
+  }
+
+  const updateHeading = field.updateHeading || field.heading;
+  const updatePattern = fieldPattern(updateHeading);
+  if (updatePattern.test(body)) {
+    return body.replace(updatePattern, (_, heading) => `${heading}${nextValue}\n`);
+  }
+
+  return insertIssueField(body, updateHeading, nextValue);
 }
 
 module.exports = {
@@ -316,6 +418,8 @@ module.exports = {
   inferRequestType,
   applyByLabel,
   replaceTargetRef,
+  replaceIssueField,
+  editableFieldForAlias,
 };
 
 if (require.main === module) {
@@ -339,7 +443,9 @@ if (require.main === module) {
     process.stdout.write(JSON.stringify(applyByLabel(body, (process.env.ISSUE_LABELS || '').split(',').filter(Boolean), { userId: process.env.ADDON_REQUESTER_ID })));
   } else if (command === 'bump') {
     process.stdout.write(replaceTargetRef(body, process.env.BUMP_REF || process.argv[3] || ''));
+  } else if (command === 'set-field') {
+    process.stdout.write(replaceIssueField(body, process.env.FIELD_NAME || process.argv[3] || '', process.env.FIELD_VALUE || process.argv.slice(4).join(' ')));
   } else {
-    throw new Error('Usage: addon-request.cjs <validate-update|validate-create|apply-update|apply-create|apply-by-label|bump>');
+    throw new Error('Usage: addon-request.cjs <validate-update|validate-create|apply-update|apply-create|apply-by-label|bump|set-field>');
   }
 }

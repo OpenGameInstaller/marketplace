@@ -85,7 +85,14 @@ On addon submission or update issues, maintainers with write access can comment:
 - `/deny [reason]` — denies and closes the request.
 - `/ban [@user]` — bans a user from addon requests.
 - `/trust [@user]` — trusts a user and auto-approves their valid update requests.
-- `/bump <commit|tag|branch>` — lets the issue creator change the requested target ref.
+- `/bump <commit|tag|branch>` — lets the issue creator, addon owner, or maintainer change the requested target.
+- `/set-name <name>` — updates the addon name on the request.
+- `/set-author <author>` — updates the author on the request.
+- `/set-description <description>` — updates the marketplace description on the request.
+- `/set-repository <url>` — updates the repository URL on the request.
+- `/set-image <url>` — updates the image URL on the request.
+
+The `/set-*` commands can be used by the issue creator, the recorded addon owner on update requests, or a maintainer with write access.
 
 ## 8. Required secrets
 

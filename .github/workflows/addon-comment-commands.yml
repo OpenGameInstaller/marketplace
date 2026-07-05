@@ -27,7 +27,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const { validateUpdate, replaceTargetRef, inferRequestType, findAddonForUpdate } = require('./scripts/addon-request.cjs');
+            const { validateUpdate, replaceTargetRef, replaceIssueField, inferRequestType, findAddonForUpdate } = require('./scripts/addon-request.cjs');
 
             const body = (context.payload.comment.body || '').trim();
             const issueBody = context.payload.issue.body || '';
@@ -61,9 +61,18 @@ jobs:
             core.setOutput('close', 'false');
             core.setOutput('message', '');
             core.setOutput('request_type', requestType);
-            core.setOutput('discussion_id', requestType === 'update' ? (findAddonForUpdate(issueBody)?.discussion?.id || '') : '');
+            const addonForUpdate = requestType === 'update' ? findAddonForUpdate(issueBody) : undefined;
+            core.setOutput('discussion_id', addonForUpdate?.discussion?.id || '');
 
-            if (!['/approve', '/deny', '/ban', '/trust', '/bump'].includes(command)) {
+            const metadataCommands = {
+              '/set-name': { field: 'name', label: 'addon name' },
+              '/set-author': { field: 'author', label: 'author' },
+              '/set-description': { field: 'description', label: 'description' },
+              '/set-repository': { field: 'repository', label: 'repository URL' },
+              '/set-image': { field: 'image', label: 'image URL' },
+            };
+
+            if (!['/approve', '/deny', '/ban', '/trust', '/bump', ...Object.keys(metadataCommands)].includes(command)) {
               core.notice('No addon command found; ignoring comment.');
               return;
             }
@@ -84,12 +93,12 @@ jobs:
               if (command === '/ban') {
                 if (!policy.bannedUsers.includes(user)) policy.bannedUsers.push(user);
                 policy.trustedUsers = policy.trustedUsers.filter((entry) => entry !== user);
-                core.setOutput('message', `🚫 @${user} is now banned from addon creation/update requests in this repository.`);
+                core.setOutput('message', `@${user} can no longer open addon creation or update requests in this repository.`);
                 core.setOutput('close', 'true');
               } else {
                 if (!policy.trustedUsers.includes(user)) policy.trustedUsers.push(user);
                 policy.bannedUsers = policy.bannedUsers.filter((entry) => entry !== user);
-                core.setOutput('message', `✅ @${user} is now trusted; their addon update requests will be approved automatically.`);
+                core.setOutput('message', `@${user} is now trusted. Their valid addon update requests can be applied automatically.`);
 
                 const canApplyCurrent = requestType === 'update' && user === issueUser;
                 if (canApplyCurrent) {
@@ -97,7 +106,7 @@ jobs:
                   if (result.errors.length === 0) {
                     core.setOutput('apply', 'true');
                     core.setOutput('close', 'true');
-                    core.setOutput('message', `✅ @${user} is now trusted, and this addon update was automatically approved and applied.`);
+                    core.setOutput('message', `@${user} is now trusted, and this addon update was approved and applied.`);
                   }
                 }
               }
@@ -114,13 +123,30 @@ jobs:
               return;
             }
 
-            if (command === '/bump') {
-              if (commenter !== issueUser) {
-                core.setFailed('Only the issue creator can use /bump.');
+            async function commenterCanEditIssue() {
+              if (commenter === issueUser) return true;
+              if (addonForUpdate?.submittedBy?.login === commenter) return true;
+              if (String(addonForUpdate?.submittedBy?.id || '') === String(context.payload.comment.user.id || '')) return true;
+
+              const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: commenter,
+              });
+              return ['admin', 'maintain', 'write'].includes(data.permission);
+            }
+
+            if (command === '/bump' || metadataCommands[command]) {
+              if (!(await commenterCanEditIssue())) {
+                core.setFailed('Only the issue creator, addon owner, or a maintainer can update request details.');
                 return;
               }
-              const requested = body.replace(/^\/bump\s*/i, '').trim();
-              const nextBody = replaceTargetRef(issueBody, requested);
+
+              const metadata = metadataCommands[command];
+              const requested = body.replace(new RegExp(`^${command}\\s*`, 'i'), '').trim();
+              const nextBody = command === '/bump'
+                ? replaceTargetRef(issueBody, requested)
+                : replaceIssueField(issueBody, metadata.field, requested);
               await github.rest.issues.update({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -131,7 +157,9 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.payload.issue.number,
-                body: `🔁 Requested target ref bumped to \`${requested}\`.`,
+                body: command === '/bump'
+                  ? `Thanks, I updated the requested target to \`${requested}\`.`
+                  : `Thanks, I updated the ${metadata.label} on this request.`,
               });
               return;
             }
@@ -139,15 +167,15 @@ jobs:
             if (command === '/approve') {
               core.setOutput('apply', 'true');
               core.setOutput('close', 'true');
-              core.setOutput('message', '✅ Your addon marketplace request has been approved and applied. Thanks for contributing to the OpenGameInstaller addon ecosystem! The marketplace will update after GitHub Pages deploys the new commit.');
+              core.setOutput('message', 'Approved and applied. Thanks for contributing to the OpenGameInstaller addon marketplace. The public marketplace file will update after GitHub Pages finishes deploying.');
             }
 
             if (command === '/deny') {
               const reason = body.replace(/^\/deny\s*/i, '').trim();
               core.setOutput('close', 'true');
               core.setOutput('message', reason
-                ? `❌ Your addon marketplace request was denied by a maintainer.\n\n**Reason:** ${reason}`
-                : '❌ Your addon marketplace request was denied by a maintainer.');
+                ? `A maintainer closed this request.\n\n**Reason:** ${reason}`
+                : 'A maintainer closed this request.');
             }
 
       - name: Commit request policy
@@ -260,7 +288,7 @@ jobs:
           script: |
             const status = '${{ steps.command.outputs.command }}' === '/approve' ? 'approved' : 'denied';
             const body = [
-              status === 'approved' ? '✅ Addon update approved.' : '❌ Addon update denied.',
+              status === 'approved' ? 'Addon update approved.' : 'Addon update closed.',
               '',
               process.env.COMMAND_MESSAGE,
               '',
@@ -281,7 +309,7 @@ jobs:
         with:
           script: |
             const pageUrl = '${{ steps.deployment.outputs.page_url }}';
-            const deploymentNote = pageUrl ? `\n\nMarketplace Pages deploy: ${pageUrl}api/marketplace.json` : '';
+            const deploymentNote = pageUrl ? `\n\nUpdated marketplace file: ${pageUrl}api/marketplace.json` : '';
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

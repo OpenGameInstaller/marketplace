@@ -7,7 +7,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this form to request that an existing marketplace addon points to a new commit, tag, or version.
+        Use this form to request that an existing marketplace addon points to a new commit, tag, or version. After opening the issue, the issue creator or addon owner can update details by commenting `/set-name`, `/set-author`, `/set-description`, `/set-repository`, `/set-image`, or `/bump`.
 
   - type: dropdown
     id: addon_id
@@ -28,7 +28,7 @@ body:
     id: target_ref
     attributes:
       label: Target commit, tag, or branch (optional; defaults to latest tag)
-      description: Prefer a full commit SHA for reproducible marketplace updates.
+      description: Leave blank to use the latest created tag, or enter a commit, tag, or branch.
     validations:
       required: false
 
