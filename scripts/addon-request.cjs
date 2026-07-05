@@ -303,6 +303,7 @@ function applyCreate(body, options = {}) {
 function inferRequestType(body, labels = []) {
   if (labels.includes('addon-create')) return 'create';
   if (labels.includes('addon-update')) return 'update';
+  if (labels.includes('addon-metadata-update')) return 'update';
 
   const fields = parseIssueForm(body);
   if (fields['addon name'] && fields['repository url'] && fields['image url']) return 'create';

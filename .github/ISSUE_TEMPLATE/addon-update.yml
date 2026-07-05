@@ -7,14 +7,14 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this form to request that an existing marketplace addon points to a new commit, tag, or version. After opening the issue, the issue creator or addon owner can update details by commenting `/set-name`, `/set-author`, `/set-description`, `/set-repository`, `/set-image`, or `/bump`.
+        Use this form to request that an existing marketplace addon points to a new commit, tag, or version. Use the addon metadata change form for reviewed name, author, repository, image, or description changes. After opening the issue, the issue creator or addon owner can update details by commenting `/set-name`, `/set-author`, `/set-description`, `/set-repository`, `/set-image`, or `/bump`.
 
   - type: dropdown
     id: addon_id
     attributes:
       label: Addon ID
       description: Select the addon ID inferred from marketplace.json.
-      # BEGIN GENERATED ADDON ID OPTIONS - run `node scripts/update-addon-issue-template.mjs`
+      # BEGIN GENERATED ADDON ID OPTIONS - run `bun scripts/update-addon-issue-template.mjs`
       options:
         - "fatboy-unpack"
         - "steam-integration"
