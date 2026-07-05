@@ -1,0 +1,82 @@
+name: Addon metadata change
+description: Request a reviewed change to an existing marketplace addon's metadata
+title: "Update addon metadata"
+labels:
+  - addon-metadata-update
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to request reviewed marketplace metadata changes for an existing addon. A maintainer must approve the request with `/approve` before metadata is changed.
+
+  - type: dropdown
+    id: addon_id
+    attributes:
+      label: Addon ID
+      description: Select the addon ID inferred from marketplace.json.
+      # BEGIN GENERATED ADDON ID OPTIONS - run `bun scripts/update-addon-issue-template.mjs`
+      options:
+        - "no-addons-available"
+      default: 0
+      # END GENERATED ADDON ID OPTIONS
+    validations:
+      required: true
+
+  - type: input
+    id: new_addon_name
+    attributes:
+      label: New addon name
+      description: Leave blank to keep the current name.
+    validations:
+      required: false
+
+  - type: input
+    id: new_author
+    attributes:
+      label: New author
+      description: Leave blank to keep the current author.
+    validations:
+      required: false
+
+  - type: input
+    id: new_repository_url
+    attributes:
+      label: New repository URL
+      description: Leave blank to keep the current repository URL.
+      placeholder: https://github.com/example/my-addon
+    validations:
+      required: false
+
+  - type: input
+    id: new_image_url
+    attributes:
+      label: New image URL
+      description: Leave blank to keep the current image URL.
+      placeholder: https://github.com/example/my-addon/raw/main/icon.png
+    validations:
+      required: false
+
+  - type: textarea
+    id: new_description
+    attributes:
+      label: New description
+      description: Leave blank to keep the current marketplace description.
+    validations:
+      required: false
+
+  - type: textarea
+    id: update_notes
+    attributes:
+      label: Update notes
+      description: Explain why this metadata change is needed.
+      placeholder: The project moved repositories and has updated branding.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I confirm this metadata change is ready for maintainer review and approval.
+          required: true

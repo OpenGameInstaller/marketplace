@@ -52,25 +52,27 @@ This template includes issue forms for addon creation and addon updates:
 
 - `.github/ISSUE_TEMPLATE/addon-create.yml`
 - `.github/ISSUE_TEMPLATE/addon-update.yml`
+- `.github/ISSUE_TEMPLATE/addon-metadata-update.yml`
 
 GitHub will create labels automatically when issues are opened, but you can also create these labels manually:
 
 - `addon-create`
 - `addon-update`
+- `addon-metadata-update`
 
 ## 6. Sync generated files
 
 After changing `marketplace.json`, run locally:
 
 ```bash
-node scripts/update-addon-issue-template.mjs
-node scripts/sync-pages-api.mjs
+bun scripts/update-addon-issue-template.mjs
+bun scripts/sync-pages-api.mjs
 ```
 
 Then commit the updated files:
 
 ```bash
-git add marketplace.json api/marketplace.json .github/ISSUE_TEMPLATE/addon-update.yml
+git add marketplace.json api/marketplace.json .github/ISSUE_TEMPLATE/addon-update.yml .github/ISSUE_TEMPLATE/addon-metadata-update.yml
 git commit -m "chore: update marketplace"
 git push
 ```

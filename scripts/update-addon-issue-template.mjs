@@ -2,7 +2,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const marketplacePath = 'marketplace.json';
-const issueTemplatePath = '.github/ISSUE_TEMPLATE/addon-update.yml';
+const issueTemplatePaths = [
+  '.github/ISSUE_TEMPLATE/addon-update.yml',
+  '.github/ISSUE_TEMPLATE/addon-metadata-update.yml',
+];
 
 function slugify(value) {
   return String(value || '')
@@ -36,19 +39,22 @@ const addonIds = [
 
 const options = addonIds.length ? addonIds : ['no-addons-available'];
 const generatedBlock = [
-  '      # BEGIN GENERATED ADDON ID OPTIONS - run `node scripts/update-addon-issue-template.mjs`',
+  '      # BEGIN GENERATED ADDON ID OPTIONS - run `bun scripts/update-addon-issue-template.mjs`',
   '      options:',
   ...options.map((id) => `        - ${JSON.stringify(id)}`),
   '      default: 0',
   '      # END GENERATED ADDON ID OPTIONS',
 ].join('\n');
 
-const template = readFileSync(issueTemplatePath, 'utf8');
 const generatedBlockPattern = /      # BEGIN GENERATED ADDON ID OPTIONS[\s\S]*?      # END GENERATED ADDON ID OPTIONS/;
-if (!generatedBlockPattern.test(template)) {
-  throw new Error('Could not find generated addon ID options block in issue template.');
+for (const issueTemplatePath of issueTemplatePaths) {
+  const template = readFileSync(issueTemplatePath, 'utf8');
+  if (!generatedBlockPattern.test(template)) {
+    throw new Error(`Could not find generated addon ID options block in ${issueTemplatePath}.`);
+  }
+
+  const nextTemplate = template.replace(generatedBlockPattern, generatedBlock);
+  writeFileSync(issueTemplatePath, nextTemplate);
 }
 
-const nextTemplate = template.replace(generatedBlockPattern, generatedBlock);
-writeFileSync(issueTemplatePath, nextTemplate);
-console.log(`Updated addon update issue template with ${addonIds.length} addon ID option(s).`);
+console.log(`Updated addon issue templates with ${addonIds.length} addon ID option(s).`);

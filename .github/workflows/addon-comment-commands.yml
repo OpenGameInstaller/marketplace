@@ -21,6 +21,26 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - uses: oven-sh/setup-bun@v2
+
+      - name: React to command
+        id: reaction
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = (context.payload.comment.body || '').trim();
+            const command = body.split(/\s+/)[0].toLowerCase();
+            const supported = ['/approve', '/deny', '/ban', '/trust', '/bump', '/set-name', '/set-author', '/set-description', '/set-repository', '/set-image'];
+            if (!supported.includes(command)) return;
+
+            const reaction = await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes',
+            });
+            core.setOutput('id', String(reaction.data.id));
+
       - name: Prepare command
         id: command
         uses: actions/github-script@v7
@@ -253,16 +273,16 @@ jobs:
           ADDON_SUBMITTER_LOGIN: ${{ github.event.issue.user.login }}
           ADDON_DISCUSSION_ID: ${{ steps.discussion.outputs.id }}
           ADDON_DISCUSSION_URL: ${{ steps.discussion.outputs.url }}
-        run: node scripts/addon-request.cjs apply-by-label
+        run: bun scripts/addon-request.cjs apply-by-label
 
       - name: Commit marketplace change
         if: steps.command.outputs.apply == 'true'
         run: |
-          node scripts/update-addon-issue-template.mjs
-          node scripts/sync-pages-api.mjs
+          bun scripts/update-addon-issue-template.mjs
+          bun scripts/sync-pages-api.mjs
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add marketplace.json api/marketplace.json .github/ISSUE_TEMPLATE/addon-update.yml
+          git add marketplace.json api/marketplace.json .github/ISSUE_TEMPLATE/addon-update.yml .github/ISSUE_TEMPLATE/addon-metadata-update.yml
           git commit -m "chore(addons): apply marketplace request from issue #${{ github.event.issue.number }}"
           git push
 
@@ -324,3 +344,22 @@ jobs:
                 state: 'closed',
               });
             }
+
+      - name: Finish command reaction
+        if: always() && steps.reaction.outputs.id != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.deleteForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              reaction_id: Number('${{ steps.reaction.outputs.id }}'),
+            });
+
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: '${{ job.status }}' === 'success' ? '+1' : 'confused',
+            });
