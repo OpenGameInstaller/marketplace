@@ -16,7 +16,9 @@ body:
       description: Select the addon ID inferred from marketplace.json.
       # BEGIN GENERATED ADDON ID OPTIONS - run `bun scripts/update-addon-issue-template.mjs`
       options:
-        - "no-addons-available"
+        - "fatboy-unpack"
+        - "steam-integration"
+        - "steamrip-addon"
       default: 0
       # END GENERATED ADDON ID OPTIONS
     validations:
