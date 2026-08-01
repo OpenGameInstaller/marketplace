@@ -4,7 +4,7 @@
     "author": "Fat-Addons",
     "source": "https://gitlab.com/fat-addons/fatboy-unpack",
     "img": "https://gitlab.com/fat-addons/fatboy-unpack/-/raw/master/favicon.png",
-    "pinnedCommit": "4b40cf15168fbf1a5f593f95b3a517fae1d5d116",
+    "pinnedCommit": "7eeb9aa4f222258fceb5fafb1f4c33461ba20cfe",
     "description": "Adds scraping from FitGirl Repacks",
     "submittedBy": {
       "id": "66748576",
@@ -13,7 +13,9 @@
     "discussion": {
       "id": "D_kwDOTLT9zc4Angox",
       "url": "https://github.com/OpenGameInstaller/marketplace/discussions/7"
-    }
+    },
+    "updatedAt": "2026-08-01T18:45:15.879Z",
+    "updateNotes": "fixed fuckingfast"
   },
   {
     "name": "Steam Integration",
