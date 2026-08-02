@@ -38,7 +38,7 @@
     "author": "Fat-Addons",
     "source": "https://gitlab.com/fat-addons/steamrip-addon",
     "img": "https://gitlab.com/fat-addons/steamrip-addon/-/raw/main/favicon.png",
-    "pinnedCommit": "0f8a962ef9c1c25499cbe0dd1f1f1661443e0b89",
+    "pinnedCommit": "012d0c0bfdf47ece77220abbfb70a32c14e733eb",
     "description": "Adds scraping from steamrip.com",
     "submittedBy": {
       "id": "66748576",
@@ -48,7 +48,7 @@
       "id": "D_kwDOTLT9zc4Angoa",
       "url": "https://github.com/OpenGameInstaller/marketplace/discussions/5"
     },
-    "updatedAt": "2026-08-02T22:01:37.980Z",
-    "updateNotes": "fixred bzzhr (2)"
+    "updatedAt": "2026-08-02T22:03:25.783Z",
+    "updateNotes": "steamrip bzzhr"
   }
 ]
