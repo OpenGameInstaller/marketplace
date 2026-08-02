@@ -20,23 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: oven-sh/setup-bun@v2
 
       - name: Update generated files
-        run: |
-          bun scripts/update-addon-issue-template.mjs
-          bun scripts/sync-pages-api.mjs
-
-      - name: Commit generated files if changed
-        run: |
-          if git diff --quiet -- .github/ISSUE_TEMPLATE/addon-update.yml .github/ISSUE_TEMPLATE/addon-metadata-update.yml api/marketplace.json; then
-            echo "Generated files are already up to date."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/ISSUE_TEMPLATE/addon-update.yml .github/ISSUE_TEMPLATE/addon-metadata-update.yml api/marketplace.json
-          git commit -m "chore: sync generated marketplace files"
-          git push
+        env:
+          COMMIT_MESSAGE: "chore: sync generated marketplace files"
+        run: bun scripts/update-main.mjs

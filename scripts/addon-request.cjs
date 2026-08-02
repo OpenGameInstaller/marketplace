@@ -250,7 +250,7 @@ function applyUpdate(body, options = {}) {
   if (!source) throw new Error('Marketplace entry is missing a source field.');
 
   addon.pinnedCommit = resolveTargetRef(source, payload.targetRef);
-  addon.updatedAt = new Date().toISOString();
+  addon.updatedAt = options.updatedAt || process.env.ADDON_UPDATED_AT || new Date().toISOString();
   addon.updateNotes = payload.notes;
   if (payload.name) addon.name = payload.name;
   if (payload.author) addon.author = payload.author;
@@ -262,11 +262,31 @@ function applyUpdate(body, options = {}) {
   return { payload, pinnedCommit: addon.pinnedCommit };
 }
 
+function equivalentCreate(addon, payload, options) {
+  const submitterId = options.submitterId || process.env.ADDON_SUBMITTER_ID;
+  const submitterLogin = options.submitterLogin || process.env.ADDON_SUBMITTER_LOGIN;
+  const discussionUrl = options.discussionUrl || process.env.ADDON_DISCUSSION_URL;
+  const discussionId = options.discussionId || process.env.ADDON_DISCUSSION_ID;
+  if (!submitterId && !submitterLogin && !discussionUrl && !discussionId) return false;
+  return addon.name === payload.name &&
+    addon.author === payload.author &&
+    normalizeUrl(addonSource(addon)) === normalizeUrl(payload.source) &&
+    addon.img === payload.img &&
+    addon.description === payload.description &&
+    (!submitterId || String(addon.submittedBy?.id || '') === String(submitterId)) &&
+    (!submitterLogin || addon.submittedBy?.login === submitterLogin) &&
+    (!discussionUrl || addon.discussion?.url === discussionUrl) &&
+    (!discussionId || addon.discussion?.id === discussionId);
+}
+
 function applyCreate(body, options = {}) {
   const validation = validateCreate(body);
+  const payload = validation.payload;
+  if (validation.duplicate && equivalentCreate(validation.duplicate, payload, options)) {
+    return { payload, pinnedCommit: validation.duplicate.pinnedCommit, alreadyApplied: true };
+  }
   if (validation.errors.length) throw new Error(validation.errors.join('\n'));
 
-  const payload = validation.payload;
   const { marketplace: addons } = readMarketplace();
   const pinnedCommit = resolveTargetRef(payload.source, payload.targetRef);
   const submitterId = options.submitterId || process.env.ADDON_SUBMITTER_ID;
@@ -298,6 +318,24 @@ function applyCreate(body, options = {}) {
   addons.sort((a, b) => a.name.localeCompare(b.name));
   fs.writeFileSync('marketplace.json', `${JSON.stringify(addons, null, 2)}\n`);
   return { payload, pinnedCommit };
+}
+
+function updatePolicy(action, user, path = '.github/addon-request-policy.json') {
+  if (!['ban', 'trust'].includes(action)) throw new Error('POLICY_ACTION must be ban or trust.');
+  if (!user) throw new Error('POLICY_USER is required.');
+
+  const policy = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : {};
+  policy.bannedUsers ||= [];
+  policy.trustedUsers ||= [];
+  const selected = action === 'ban' ? policy.bannedUsers : policy.trustedUsers;
+  const opposite = action === 'ban' ? policy.trustedUsers : policy.bannedUsers;
+  if (!selected.includes(user)) selected.push(user);
+  const index = opposite.indexOf(user);
+  if (index !== -1) opposite.splice(index, 1);
+  policy.bannedUsers.sort((a, b) => a.localeCompare(b));
+  policy.trustedUsers.sort((a, b) => a.localeCompare(b));
+  fs.writeFileSync(path, `${JSON.stringify(policy, null, 2)}\n`);
+  return policy;
 }
 
 function inferRequestType(body, labels = []) {
@@ -416,6 +454,7 @@ module.exports = {
   requesterOwnsAddon,
   applyUpdate,
   applyCreate,
+  updatePolicy,
   inferRequestType,
   applyByLabel,
   replaceTargetRef,
@@ -442,11 +481,13 @@ if (require.main === module) {
     process.stdout.write(JSON.stringify(applyCreate(body)));
   } else if (command === 'apply-by-label') {
     process.stdout.write(JSON.stringify(applyByLabel(body, (process.env.ISSUE_LABELS || '').split(',').filter(Boolean), { userId: process.env.ADDON_REQUESTER_ID })));
+  } else if (command === 'update-policy') {
+    process.stdout.write(JSON.stringify(updatePolicy(process.env.POLICY_ACTION, process.env.POLICY_USER)));
   } else if (command === 'bump') {
     process.stdout.write(replaceTargetRef(body, process.env.BUMP_REF || process.argv[3] || ''));
   } else if (command === 'set-field') {
     process.stdout.write(replaceIssueField(body, process.env.FIELD_NAME || process.argv[3] || '', process.env.FIELD_VALUE || process.argv.slice(4).join(' ')));
   } else {
-    throw new Error('Usage: addon-request.cjs <validate-update|validate-create|apply-update|apply-create|apply-by-label|bump|set-field>');
+    throw new Error('Usage: addon-request.cjs <validate-update|validate-create|apply-update|apply-create|apply-by-label|update-policy|bump|set-field>');
   }
 }

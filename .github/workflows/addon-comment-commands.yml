@@ -19,6 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: oven-sh/setup-bun@v2
@@ -78,6 +79,8 @@ jobs:
             core.setOutput('command', command);
             core.setOutput('apply', 'false');
             core.setOutput('commit_policy', 'false');
+            core.setOutput('policy_action', '');
+            core.setOutput('policy_user', '');
             core.setOutput('close', 'false');
             core.setOutput('message', '');
             core.setOutput('request_type', requestType);
@@ -111,13 +114,9 @@ jobs:
               const user = mention || issueUser;
 
               if (command === '/ban') {
-                if (!policy.bannedUsers.includes(user)) policy.bannedUsers.push(user);
-                policy.trustedUsers = policy.trustedUsers.filter((entry) => entry !== user);
                 core.setOutput('message', `@${user} can no longer open addon creation or update requests in this repository.`);
                 core.setOutput('close', 'true');
               } else {
-                if (!policy.trustedUsers.includes(user)) policy.trustedUsers.push(user);
-                policy.bannedUsers = policy.bannedUsers.filter((entry) => entry !== user);
                 core.setOutput('message', `@${user} is now trusted. Their valid addon update requests can be applied automatically.`);
 
                 const canApplyCurrent = requestType === 'update' && user === issueUser;
@@ -131,9 +130,8 @@ jobs:
                 }
               }
 
-              policy.bannedUsers.sort((a, b) => a.localeCompare(b));
-              policy.trustedUsers.sort((a, b) => a.localeCompare(b));
-              fs.writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`);
+              core.setOutput('policy_action', command.slice(1));
+              core.setOutput('policy_user', user);
               core.setOutput('commit_policy', 'true');
               return;
             }
@@ -198,18 +196,13 @@ jobs:
                 : 'A maintainer closed this request.');
             }
 
-      - name: Commit request policy
+      - name: Update request policy
         if: steps.command.outputs.commit_policy == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/addon-request-policy.json
-          if git diff --cached --quiet; then
-            echo "Policy already up to date."
-            exit 0
-          fi
-          git commit -m "chore(addon requests): update trust policy"
-          git push
+        env:
+          COMMIT_MESSAGE: "chore(addon requests): update trust policy"
+          POLICY_ACTION: ${{ steps.command.outputs.policy_action }}
+          POLICY_USER: ${{ steps.command.outputs.policy_user }}
+        run: bun scripts/update-main.mjs -- bun scripts/addon-request.cjs update-policy
 
       - name: Create addon discussion
         id: discussion
@@ -266,6 +259,7 @@ jobs:
       - name: Apply marketplace change
         if: steps.command.outputs.apply == 'true'
         env:
+          COMMIT_MESSAGE: "chore(addons): apply marketplace request from issue #${{ github.event.issue.number }}"
           ISSUE_BODY: ${{ github.event.issue.body }}
           ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
           ADDON_REQUESTER_ID: ${{ github.event.issue.user.id }}
@@ -273,18 +267,8 @@ jobs:
           ADDON_SUBMITTER_LOGIN: ${{ github.event.issue.user.login }}
           ADDON_DISCUSSION_ID: ${{ steps.discussion.outputs.id }}
           ADDON_DISCUSSION_URL: ${{ steps.discussion.outputs.url }}
-        run: bun scripts/addon-request.cjs apply-by-label
-
-      - name: Commit marketplace change
-        if: steps.command.outputs.apply == 'true'
-        run: |
-          bun scripts/update-addon-issue-template.mjs
-          bun scripts/sync-pages-api.mjs
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add marketplace.json api/marketplace.json .github/ISSUE_TEMPLATE/addon-update.yml .github/ISSUE_TEMPLATE/addon-metadata-update.yml
-          git commit -m "chore(addons): apply marketplace request from issue #${{ github.event.issue.number }}"
-          git push
+          ADDON_UPDATED_AT: ${{ github.event.comment.created_at }}
+        run: bun scripts/update-main.mjs -- bun scripts/addon-request.cjs apply-by-label
 
       - uses: actions/configure-pages@v5
         if: steps.command.outputs.apply == 'true'
