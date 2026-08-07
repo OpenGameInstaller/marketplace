@@ -5,7 +5,8 @@ import { existsSync } from 'node:fs';
 const branch = process.env.UPDATE_MAIN_BRANCH || 'main';
 const maxAttempts = Number.parseInt(process.env.UPDATE_MAIN_ATTEMPTS || '5', 10);
 const separator = process.argv.indexOf('--');
-const mutation = separator === -1 ? [] : process.argv.slice(separator + 1);
+// Bun consumes the `--` delimiter before exposing process.argv; Node preserves it.
+const mutation = process.argv.slice(separator === -1 ? 2 : separator + 1);
 const controlledPaths = [
   'marketplace.json',
   '.github/addon-request-policy.json',
