@@ -107,6 +107,14 @@ function applyUpdate(runner, addonId, targetRef) {
   });
 }
 
+function applyUpdateWithBun(runner, addonId, targetRef) {
+  return execFileSync('bun', updateCommand, {
+    cwd: runner,
+    env: updateEnvironment(addonId, targetRef),
+    encoding: 'utf8',
+  });
+}
+
 function applyUpdateAsync(runner, addonId, targetRef) {
   const child = spawn('node', updateCommand, {
     cwd: runner,
@@ -144,6 +152,23 @@ test('a stale runner replays its marketplace update on latest main', () => {
     const marketplace = JSON.parse(readFileSync(join(result, 'marketplace.json'), 'utf8'));
     assert.equal(marketplace.find((addon) => addon.name === 'Alpha').pinnedCommit, 'alpha-new');
     assert.equal(marketplace.find((addon) => addon.name === 'Beta').pinnedCommit, 'beta-new');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the workflow-style Bun invocation applies its mutation', () => {
+  const root = mkdtempSync(join(tmpdir(), 'ogi-update-main-bun-'));
+  try {
+    const remote = prepareRemote(root);
+    const runner = prepareRunner(root, remote, 'runner');
+
+    const output = applyUpdateWithBun(runner, 'alpha', 'alpha-new');
+    assert.match(output, /"pinnedCommit":"alpha-new"/);
+
+    const result = prepareRunner(root, remote, 'result');
+    const marketplace = JSON.parse(readFileSync(join(result, 'marketplace.json'), 'utf8'));
+    assert.equal(marketplace.find((addon) => addon.name === 'Alpha').pinnedCommit, 'alpha-new');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
