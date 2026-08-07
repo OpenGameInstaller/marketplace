@@ -38,7 +38,7 @@
     "author": "Fat-Addons",
     "source": "https://gitlab.com/fat-addons/steamrip-addon",
     "img": "https://gitlab.com/fat-addons/steamrip-addon/-/raw/main/favicon.png",
-    "pinnedCommit": "012d0c0bfdf47ece77220abbfb70a32c14e733eb",
+    "pinnedCommit": "e94813488c3eb84a8222177c889893575c774795",
     "description": "Adds scraping from steamrip.com",
     "submittedBy": {
       "id": "66748576",
@@ -48,7 +48,7 @@
       "id": "D_kwDOTLT9zc4Angoa",
       "url": "https://github.com/OpenGameInstaller/marketplace/discussions/5"
     },
-    "updatedAt": "2026-08-02T22:03:25.783Z",
-    "updateNotes": "steamrip bzzhr"
+    "updatedAt": "2026-08-07T01:52:37Z",
+    "updateNotes": "extract progress of zip and rar"
   }
 ]
