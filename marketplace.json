@@ -54,7 +54,7 @@
     "author": "Fat-Addons",
     "source": "https://gitlab.com/fat-addons/steamrip-addon",
     "img": "https://gitlab.com/fat-addons/steamrip-addon/-/raw/main/favicon.png",
-    "pinnedCommit": "57a9d9c57b4f1266957fa0b6bbdc0d7d831e36e4",
+    "pinnedCommit": "614a9949d5396d0f9770bb24624b13820a237f97",
     "description": "Adds scraping from steamrip.com",
     "submittedBy": {
       "id": "66748576",
@@ -64,7 +64,7 @@
       "id": "D_kwDOTLT9zc4Angoa",
       "url": "https://github.com/OpenGameInstaller/marketplace/discussions/5"
     },
-    "updatedAt": "2026-08-07T07:24:16Z",
-    "updateNotes": "MECCHA CHAMELEON fix with override for linux"
+    "updatedAt": "2026-08-14T01:32:20Z",
+    "updateNotes": "fixed megadb"
   }
 ]
