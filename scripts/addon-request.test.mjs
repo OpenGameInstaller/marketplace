@@ -1,10 +1,13 @@
 import { afterEach, expect, test } from 'bun:test';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const addonRequestScript = resolve(import.meta.dir, 'addon-request.cjs');
+const require = createRequire(import.meta.url);
+const { isVersionUpdateRequest } = require(addonRequestScript);
 const temporaryDirectories = [];
 
 afterEach(() => {
@@ -46,6 +49,22 @@ function updateBody(targetRef) {
     '### Update notes', 'Test tag resolution',
   ].join('\n\n');
 }
+
+test('label-less version updates remain eligible for trusted auto-approval', () => {
+  expect(isVersionUpdateRequest(updateBody('latest'), [])).toBe(true);
+});
+
+test('metadata updates still require maintainer approval', () => {
+  const body = [
+    '### Addon ID', 'tagged-addon',
+    '### Target commit, tag, or branch', 'latest',
+    '### New addon name', 'Renamed addon',
+    '### Update notes', 'Rename the listing',
+  ].join('\n\n');
+
+  expect(isVersionUpdateRequest(body, [])).toBe(false);
+  expect(isVersionUpdateRequest(body, ['addon-update'])).toBe(false);
+});
 
 function applyTaggedUpdate(source, targetRef, body = updateBody(targetRef)) {
   const marketplaceDirectory = mkdtempSync(join(tmpdir(), 'ogi-marketplace-'));

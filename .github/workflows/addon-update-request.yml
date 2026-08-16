@@ -177,8 +177,11 @@ jobs:
   auto-approve-trusted-request:
     if: >-
       github.event_name == 'issues' &&
-      contains(github.event.issue.labels.*.name, 'addon-update') &&
-      !contains(github.event.issue.labels.*.name, 'addon-metadata-update')
+      (
+        contains(github.event.issue.labels.*.name, 'addon-update') ||
+        contains(github.event.issue.labels.*.name, 'addon-metadata-update') ||
+        contains(github.event.issue.body, '### Addon ID')
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -194,13 +197,15 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const { validate } = require('./scripts/addon-request.cjs');
+            const { isVersionUpdateRequest, validate } = require('./scripts/addon-request.cjs');
             const policy = JSON.parse(fs.readFileSync('.github/addon-request-policy.json', 'utf8'));
             const user = context.payload.issue.user.login;
+            const labels = context.payload.issue.labels.map((label) => label.name);
             const trusted = (policy.trustedUsers || []).includes(user);
             const banned = (policy.bannedUsers || []).includes(user);
             const result = validate(context.payload.issue.body || '', { user, userId: context.payload.issue.user.id, trusted, banned });
-            core.setOutput('apply', String(trusted && !banned && result.errors.length === 0));
+            const versionUpdate = isVersionUpdateRequest(context.payload.issue.body || '', labels);
+            core.setOutput('apply', String(versionUpdate && trusted && !banned && result.errors.length === 0));
             core.setOutput('discussion_id', result.addon?.discussion?.id || '');
 
       - name: Apply trusted marketplace update
