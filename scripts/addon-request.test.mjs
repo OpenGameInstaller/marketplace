@@ -36,7 +36,7 @@ function createTaggedRepository() {
   writeFileSync(join(directory, 'addon.json'), '{"next":true}\n');
   git(directory, ['add', 'addon.json']);
   git(directory, ['commit', '-m', 'untagged change']);
-  return { commit, directory };
+  return { commit, directory, head: git(directory, ['rev-parse', 'HEAD']) };
 }
 
 function applyTaggedUpdate(source, targetRef) {
@@ -79,4 +79,9 @@ test('requested branches and commits are normalized to full commit SHAs', () => 
 test('an omitted target pins the newest tag commit instead of HEAD', () => {
   const source = createTaggedRepository();
   expect(applyTaggedUpdate(source)).toBe(source.commit);
+});
+
+test('latest pins HEAD even when the newest tag points to an older commit', () => {
+  const source = createTaggedRepository();
+  expect(applyTaggedUpdate(source, 'latest')).toBe(source.head);
 });

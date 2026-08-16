@@ -96,7 +96,8 @@ function resolveTargetRef(source, requestedRef) {
     execFileSync('git', ['--git-dir', tmp, 'remote', 'add', 'origin', source], { stdio: 'inherit' });
 
     if (requestedRef) {
-      execFileSync('git', ['--git-dir', tmp, 'fetch', '--force', '--no-tags', 'origin', requestedRef], { stdio: 'inherit' });
+      const ref = requestedRef.toLowerCase() === 'latest' ? 'HEAD' : requestedRef;
+      execFileSync('git', ['--git-dir', tmp, 'fetch', '--force', '--no-tags', 'origin', ref], { stdio: 'inherit' });
       return execFileSync('git', ['--git-dir', tmp, 'rev-parse', 'FETCH_HEAD^{commit}'], { encoding: 'utf8' }).trim();
     }
 
