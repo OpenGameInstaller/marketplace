@@ -90,12 +90,16 @@ function parseCreatePayload(body) {
 }
 
 function resolveTargetRef(source, requestedRef) {
-  if (requestedRef) return requestedRef;
-
   const tmp = fs.mkdtempSync('/tmp/ogi-addon-tags-');
   try {
     execFileSync('git', ['init', '--bare', tmp], { stdio: 'inherit' });
     execFileSync('git', ['--git-dir', tmp, 'remote', 'add', 'origin', source], { stdio: 'inherit' });
+
+    if (requestedRef) {
+      execFileSync('git', ['--git-dir', tmp, 'fetch', '--force', '--no-tags', 'origin', requestedRef], { stdio: 'inherit' });
+      return execFileSync('git', ['--git-dir', tmp, 'rev-parse', 'FETCH_HEAD^{commit}'], { encoding: 'utf8' }).trim();
+    }
+
     execFileSync('git', ['--git-dir', tmp, 'fetch', '--tags', '--force', 'origin', '+refs/tags/*:refs/tags/*'], { stdio: 'inherit' });
 
     const latestTag = execFileSync(
@@ -105,13 +109,14 @@ function resolveTargetRef(source, requestedRef) {
     ).trim();
 
     if (latestTag) {
-      return execFileSync('git', ['--git-dir', tmp, 'rev-list', '-n', '1', latestTag], { encoding: 'utf8' }).trim();
+      return execFileSync('git', ['--git-dir', tmp, 'rev-parse', `${latestTag}^{commit}`], { encoding: 'utf8' }).trim();
     }
+
+    execFileSync('git', ['--git-dir', tmp, 'fetch', '--force', '--no-tags', 'origin', 'HEAD'], { stdio: 'inherit' });
+    return execFileSync('git', ['--git-dir', tmp, 'rev-parse', 'FETCH_HEAD^{commit}'], { encoding: 'utf8' }).trim();
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
-
-  return execFileSync('git', ['ls-remote', source, 'HEAD'], { encoding: 'utf8' }).trim().split(/\s+/)[0];
 }
 
 function validateUrl(value, label, errors) {

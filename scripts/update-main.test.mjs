@@ -44,9 +44,27 @@ function issueBody(addonId, targetRef) {
   ].join('\n');
 }
 
+function prepareAddonRepository(root, name) {
+  const source = join(root, `${name}-addon`);
+  mkdirSync(source);
+  git(source, ['init', '--initial-branch=main']);
+  git(source, ['config', 'user.name', 'Test']);
+  git(source, ['config', 'user.email', 'test@example.com']);
+  writeFileSync(join(source, 'addon.json'), `${name}-old\n`);
+  git(source, ['add', 'addon.json']);
+  git(source, ['commit', '-m', 'old version']);
+  git(source, ['tag', `${name}-old`]);
+  writeFileSync(join(source, 'addon.json'), `${name}-new\n`);
+  git(source, ['commit', '-am', 'new version']);
+  git(source, ['tag', `${name}-new`]);
+  return source;
+}
+
 function prepareRemote(root) {
   const remote = join(root, 'remote.git');
   const seed = join(root, 'seed');
+  const alphaSource = prepareAddonRepository(root, 'alpha');
+  const betaSource = prepareAddonRepository(root, 'beta');
   mkdirSync(seed);
   git(root, ['init', '--bare', '--initial-branch=main', remote]);
   git(seed, ['init', '--initial-branch=main']);
@@ -63,8 +81,8 @@ function prepareRemote(root) {
   writeUpdateTemplate(join(seed, '.github', 'ISSUE_TEMPLATE', 'addon-metadata-update.yml'));
   writeFileSync(join(seed, '.gitignore'), '_site/\n');
   writeFileSync(join(seed, 'marketplace.json'), `${JSON.stringify([
-    { name: 'Alpha', source: 'https://example.com/alpha', pinnedCommit: 'alpha-old' },
-    { name: 'Beta', source: 'https://example.com/beta', pinnedCommit: 'beta-old' },
+    { id: 'alpha', name: 'Alpha', source: alphaSource, pinnedCommit: git(alphaSource, ['rev-parse', 'alpha-old']) },
+    { id: 'beta', name: 'Beta', source: betaSource, pinnedCommit: git(betaSource, ['rev-parse', 'beta-old']) },
   ], null, 2)}\n`);
 
   git(seed, ['add', '.']);
@@ -143,6 +161,8 @@ test('a stale runner replays its marketplace update on latest main', () => {
     const remote = prepareRemote(root);
     const alphaRunner = prepareRunner(root, remote, 'alpha-runner');
     const betaRunner = prepareRunner(root, remote, 'beta-runner');
+    const alphaCommit = git(join(root, 'alpha-addon'), ['rev-parse', 'alpha-new']);
+    const betaCommit = git(join(root, 'beta-addon'), ['rev-parse', 'beta-new']);
 
     applyUpdate(alphaRunner, 'alpha', 'alpha-new');
     const betaOutput = applyUpdate(betaRunner, 'beta', 'beta-new');
@@ -150,8 +170,8 @@ test('a stale runner replays its marketplace update on latest main', () => {
 
     const result = prepareRunner(root, remote, 'result');
     const marketplace = JSON.parse(readFileSync(join(result, 'marketplace.json'), 'utf8'));
-    assert.equal(marketplace.find((addon) => addon.name === 'Alpha').pinnedCommit, 'alpha-new');
-    assert.equal(marketplace.find((addon) => addon.name === 'Beta').pinnedCommit, 'beta-new');
+    assert.equal(marketplace.find((addon) => addon.name === 'Alpha').pinnedCommit, alphaCommit);
+    assert.equal(marketplace.find((addon) => addon.name === 'Beta').pinnedCommit, betaCommit);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -162,13 +182,14 @@ test('the workflow-style Bun invocation applies its mutation', () => {
   try {
     const remote = prepareRemote(root);
     const runner = prepareRunner(root, remote, 'runner');
+    const alphaCommit = git(join(root, 'alpha-addon'), ['rev-parse', 'alpha-new']);
 
     const output = applyUpdateWithBun(runner, 'alpha', 'alpha-new');
-    assert.match(output, /"pinnedCommit":"alpha-new"/);
+    assert.match(output, new RegExp(`"pinnedCommit":"${alphaCommit}"`));
 
     const result = prepareRunner(root, remote, 'result');
     const marketplace = JSON.parse(readFileSync(join(result, 'marketplace.json'), 'utf8'));
-    assert.equal(marketplace.find((addon) => addon.name === 'Alpha').pinnedCommit, 'alpha-new');
+    assert.equal(marketplace.find((addon) => addon.name === 'Alpha').pinnedCommit, alphaCommit);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -182,6 +203,8 @@ test('a rejected concurrent push retries without losing either update', async ()
     mkdirSync(coordinator);
     const alphaRunner = prepareRunner(root, remote, 'alpha-runner');
     const betaRunner = prepareRunner(root, remote, 'beta-runner');
+    const alphaCommit = git(join(root, 'alpha-addon'), ['rev-parse', 'alpha-new']);
+    const betaCommit = git(join(root, 'beta-addon'), ['rev-parse', 'beta-new']);
     installPushBarrier(alphaRunner, coordinator, 'alpha');
     installPushBarrier(betaRunner, coordinator, 'beta');
 
@@ -196,8 +219,8 @@ test('a rejected concurrent push retries without losing either update', async ()
 
     const result = prepareRunner(root, remote, 'result');
     const marketplace = JSON.parse(readFileSync(join(result, 'marketplace.json'), 'utf8'));
-    assert.equal(marketplace.find((addon) => addon.name === 'Alpha').pinnedCommit, 'alpha-new');
-    assert.equal(marketplace.find((addon) => addon.name === 'Beta').pinnedCommit, 'beta-new');
+    assert.equal(marketplace.find((addon) => addon.name === 'Alpha').pinnedCommit, alphaCommit);
+    assert.equal(marketplace.find((addon) => addon.name === 'Beta').pinnedCommit, betaCommit);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
