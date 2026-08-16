@@ -4,7 +4,7 @@
     "author": "Fat-Addons",
     "source": "https://gitlab.com/fat-addons/fatboy-unpack",
     "img": "https://gitlab.com/fat-addons/fatboy-unpack/-/raw/master/favicon.png",
-    "pinnedCommit": "fc883a6c3de11588ea7b41e29ff9f21cee4f7dbd",
+    "pinnedCommit": "d33c1a971d511e555a2e4d319d30bc19f58bbb45",
     "description": "Adds scraping from FitGirl Repacks",
     "submittedBy": {
       "id": "66748576",
@@ -14,8 +14,8 @@
       "id": "D_kwDOTLT9zc4Angox",
       "url": "https://github.com/OpenGameInstaller/marketplace/discussions/7"
     },
-    "updatedAt": "2026-08-07T01:52:37Z",
-    "updateNotes": "extract progress automagically"
+    "updatedAt": "2026-08-16T16:38:49Z",
+    "updateNotes": "used correct command for fatboy"
   },
   {
     "name": "Local Files",
