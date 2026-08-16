@@ -39,7 +39,15 @@ function createTaggedRepository() {
   return { commit, directory, head: git(directory, ['rev-parse', 'HEAD']) };
 }
 
-function applyTaggedUpdate(source, targetRef) {
+function updateBody(targetRef) {
+  return [
+    '### Addon ID', 'tagged-addon',
+    '### Target commit, tag, or branch', targetRef || '_No response_',
+    '### Update notes', 'Test tag resolution',
+  ].join('\n\n');
+}
+
+function applyTaggedUpdate(source, targetRef, body = updateBody(targetRef)) {
   const marketplaceDirectory = mkdtempSync(join(tmpdir(), 'ogi-marketplace-'));
   temporaryDirectories.push(marketplaceDirectory);
   writeFileSync(join(marketplaceDirectory, 'marketplace.json'), `${JSON.stringify([{
@@ -48,12 +56,6 @@ function applyTaggedUpdate(source, targetRef) {
     source: source.directory,
     pinnedCommit: 'old-commit',
   }], null, 2)}\n`);
-
-  const body = [
-    '### Addon ID', 'tagged-addon',
-    '### Target commit, tag, or branch', targetRef || '_No response_',
-    '### Update notes', 'Test tag resolution',
-  ].join('\n\n');
 
   execFileSync('bun', [addonRequestScript, 'apply-update'], {
     cwd: marketplaceDirectory,
@@ -84,4 +86,15 @@ test('an omitted target pins the newest tag commit instead of HEAD', () => {
 test('latest pins HEAD even when the newest tag points to an older commit', () => {
   const source = createTaggedRepository();
   expect(applyTaggedUpdate(source, 'latest')).toBe(source.head);
+});
+
+test('/bump latest updates a blank target and pins HEAD on approval', () => {
+  const source = createTaggedRepository();
+  const bumpedBody = execFileSync('bun', [addonRequestScript, 'bump'], {
+    env: { ...process.env, ISSUE_BODY: updateBody(), BUMP_REF: 'latest' },
+    encoding: 'utf8',
+  });
+
+  expect(bumpedBody).toContain('### Target commit, tag, or branch\n\nlatest');
+  expect(applyTaggedUpdate(source, undefined, bumpedBody)).toBe(source.head);
 });
