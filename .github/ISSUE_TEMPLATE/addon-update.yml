@@ -29,7 +29,8 @@ body:
     id: target_ref
     attributes:
       label: Target commit, tag, or branch (optional; defaults to latest tag)
-      description: Leave blank to use the latest created tag, or enter a commit, tag, or branch.
+      description: Leave blank to use the latest created tag. Enter latest to use the repository's current HEAD, or enter a commit, tag, or branch.
+      placeholder: latest
     validations:
       required: false
 
