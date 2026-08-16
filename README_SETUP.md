@@ -54,7 +54,7 @@ This template includes issue forms for addon creation and addon updates:
 - `.github/ISSUE_TEMPLATE/addon-update.yml`
 - `.github/ISSUE_TEMPLATE/addon-metadata-update.yml`
 
-GitHub will create labels automatically when issues are opened, but you can also create these labels manually:
+Issue forms can apply these labels only after they exist in the repository, so create them before accepting requests:
 
 - `addon-create`
 - `addon-update`

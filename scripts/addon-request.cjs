@@ -355,6 +355,25 @@ function inferRequestType(body, labels = []) {
   return '';
 }
 
+function isVersionUpdateRequest(body, labels = []) {
+  if (labels.includes('addon-metadata-update')) return false;
+
+  const fields = parseIssueForm(body);
+  const fieldNames = Object.keys(fields);
+  const hasMetadataField = fieldNames.some((field) => [
+    'new addon name',
+    'new author',
+    'new repository url',
+    'new image url',
+    'new description',
+  ].some((prefix) => field.startsWith(prefix)));
+  if (hasMetadataField) return false;
+  if (labels.includes('addon-update')) return true;
+
+  const hasTargetField = fieldNames.some((field) => field.startsWith('target commit, tag, or branch'));
+  return Boolean(fields['addon id'] && hasTargetField);
+}
+
 function applyByLabel(body, labels = [], options = {}) {
   const type = inferRequestType(body, labels);
   if (type === 'create') return applyCreate(body, options);
@@ -462,6 +481,7 @@ module.exports = {
   applyCreate,
   updatePolicy,
   inferRequestType,
+  isVersionUpdateRequest,
   applyByLabel,
   replaceTargetRef,
   replaceIssueField,
