@@ -37,7 +37,7 @@
     "name": "Steam Integration",
     "author": "OGI Team",
     "source": "https://github.com/Nat3z/steam-integration",
-    "img": "https://github.com/Nat3z/steam-integration/blob/main/icon.png?raw=true",
+    "img": "https://raw.githubusercontent.com/Nat3z/steam-integration/refs/heads/main/favicon.png",
     "pinnedCommit": "a0912b281e3ab591e1d2c3bd415fdba0bdba1fb3",
     "description": "Adds support for metadata and searching for Steam",
     "submittedBy": {
@@ -48,8 +48,8 @@
       "id": "D_kwDOTLT9zc4AngoU",
       "url": "https://github.com/OpenGameInstaller/marketplace/discussions/3"
     },
-    "updatedAt": "2026-08-16T21:46:03Z",
-    "updateNotes": "fixed discovery image capsule issue once and for all!"
+    "updatedAt": "2026-08-19T21:24:05Z",
+    "updateNotes": "changed the path lol"
   },
   {
     "name": "Steamrip Scraper",
