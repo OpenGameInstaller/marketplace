@@ -22,7 +22,7 @@
     "author": "Nat3z",
     "source": "https://github.com/Nat3z/local-files-addon",
     "img": "https://raw.githubusercontent.com/Nat3z/local-files-addon/refs/heads/main/icon.png",
-    "pinnedCommit": "2421ab5b789783cb3105dcad6df0724fac9d8674",
+    "pinnedCommit": "9a423082e1a1ba03c9763b5b1a0b4e936990ff79",
     "description": "Adds support for adding games from the local filesystem and sharing diagnostics",
     "submittedBy": {
       "id": "66748576",
@@ -32,8 +32,8 @@
       "id": "D_kwDOTLT9zc4AoeW8",
       "url": "https://github.com/OpenGameInstaller/marketplace/discussions/19"
     },
-    "updatedAt": "2026-08-19T22:49:50Z",
-    "updateNotes": "- updated private/public key and updated ogi-addon"
+    "updatedAt": "2026-08-20T04:10:28Z",
+    "updateNotes": "- added redist selection for verbs"
   },
   {
     "name": "Steam Integration",
